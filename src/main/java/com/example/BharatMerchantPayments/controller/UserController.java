@@ -7,10 +7,7 @@ import com.example.BharatMerchantPayments.dto.UserResponse;
 import com.example.BharatMerchantPayments.service.UserService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping(value = "/user")
@@ -40,6 +37,15 @@ public class UserController {
         }
         catch (Exception e) {
             throw new RuntimeException("Error in user login.");
+        }
+    }
+
+    @PostMapping(value = "/auth/logoff")
+    public String userLogoff(@RequestHeader ("authorisation") final String authHeader) {
+        try {
+            return userService.logoutUser(authHeader);
+        } catch (Exception e) {
+            throw new RuntimeException("Failure in user logoff API");
         }
     }
 }

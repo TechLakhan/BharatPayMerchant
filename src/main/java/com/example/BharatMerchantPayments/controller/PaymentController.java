@@ -17,11 +17,9 @@ import java.util.concurrent.ConcurrentHashMap;
 public class PaymentController {
 
     private final PaymentService paymentService;
-    private final JwtService jwtService;
 
-    public PaymentController(PaymentService paymentService, JwtService jwtService) {
+    public PaymentController(PaymentService paymentService) {
         this.paymentService = paymentService;
-        this.jwtService = jwtService;
     }
 
     @PostMapping(value = "/payments")
@@ -29,24 +27,16 @@ public class PaymentController {
                                            @RequestHeader final String idempotencyKey,
                                            @RequestHeader ("authorisation") final String authHeader) {
         paymentService.validateRequestBody(request);
-        String userId = validateJwt_GetUsername(authHeader);
+        String userId = paymentService.getUserIdFromToken(authHeader);
         return paymentService.validateKey(idempotencyKey, request, UUID.fromString(userId));
     }
 
-    private String validateJwt_GetUsername(final String authHeader) {
-        String token = authHeader.replace("Bearer ", "")
-                .replace("bpm_*", "");
-        boolean isValidToken = jwtService.validateToken(token);
-        if (!isValidToken) {
-            throw new RuntimeException("Token is not valid");
-        }
-        return jwtService.extractUserId(token);
-    }
+
 
     @GetMapping(value = "/payments/{paymentId}")
     public ResponseEntity<Payment> aquirePayment(@PathVariable final UUID paymentId, @RequestHeader("authorisation") final String authHeader) {
         try {
-            validateJwt_GetUsername(authHeader);
+            paymentService.checkTokenValidity(authHeader);
             Payment payment = paymentService.getPaymentById(paymentId);
             return new ResponseEntity<>(payment, HttpStatus.OK);
         } catch (RuntimeException e) {
