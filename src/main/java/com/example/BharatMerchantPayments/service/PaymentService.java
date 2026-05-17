@@ -5,14 +5,12 @@ import com.example.BharatMerchantPayments.dto.PaymentResponse;
 import com.example.BharatMerchantPayments.enums.PaymentStatus;
 import com.example.BharatMerchantPayments.model.Payment;
 import com.example.BharatMerchantPayments.model.User;
+import com.example.BharatMerchantPayments.repository.PaymentRepository;
 import com.example.BharatMerchantPayments.repository.UserRepository;
 import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
 
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Service
@@ -20,34 +18,30 @@ public class PaymentService {
 
     private final Set<String> is_allowed_payment_method = Set.of("UPI", "CASH", "NET_BANKING");
     private final static String SUCCESS = "SUCCESS";
-    private final Map<UUID, Payment> payments = new ConcurrentHashMap<>();
-    private final Map<String, PaymentRequest> processedRequests = new ConcurrentHashMap<>();
-    private final Map<String, PaymentResponse> paymentResponseMap = new ConcurrentHashMap<>();
-
-    private final Environment environment;
 
     private final UserRepository userRepository;
 
     private final JwtService jwtService;
 
-    public PaymentService(Environment environment, UserRepository userRepository, JwtService jwtService) {
-        this.environment = environment;
+    private final PaymentRepository paymentRepository;
+
+    public PaymentService(UserRepository userRepository, JwtService jwtService, PaymentRepository paymentRepository) {
         this.userRepository = userRepository;
         this.jwtService = jwtService;
+        this.paymentRepository = paymentRepository;
     }
 
-    public PaymentResponse initiatePayment(final PaymentRequest request, final String idempotencyKey, UUID userId) {
+    public PaymentResponse initiatePayment(final PaymentRequest request, final String idempotencyKey, User user) {
         Payment payment = new Payment();
-        payment.setUserId(String.valueOf(userId));
         payment.setPaymentId(UUID.randomUUID());
         payment.setAmount(request.getAmount());
         payment.setCurrency(request.getCurrency());
         payment.setPaymentMethod(request.getPaymentMethod());
         payment.setStatus(PaymentStatus.SUCCESS);
-        payments.put(payment.getPaymentId(), payment);
-        PaymentResponse paymentResponse = new PaymentResponse(payment.getPaymentId(), payment.getStatus());
-        paymentResponseMap.put(idempotencyKey, paymentResponse);
-        return paymentResponse;
+        payment.setIdempotencyKey(idempotencyKey);
+        payment.setUser(user);
+        paymentRepository.save(payment);
+        return new PaymentResponse(user.getUserId(), payment.getAmount(), payment.getCurrency(), payment.getPaymentMethod(), payment.getPaymentId(), payment.getStatus());
     }
 
     public void validateRequestBody(final PaymentRequest request) {
@@ -62,36 +56,47 @@ public class PaymentService {
         }
     }
 
-    public Payment getPaymentById(final UUID paymentId) {
+    public PaymentResponse getPaymentById(final UUID paymentId, UUID userIdFromToken) {
         if (paymentId == null || paymentId.toString().isBlank()) {
             throw new RuntimeException("paymentId is invalid or blank");
         }
+        Payment payment = paymentRepository.getPaymentByPaymentId(paymentId);
+        return new PaymentResponse(userIdFromToken, payment.getAmount(), payment.getCurrency(), payment.getPaymentMethod(), payment.getPaymentId(), payment.getStatus());
 
-        if (!payments.containsKey(paymentId)) {
-            throw new RuntimeException("PaymentId is not found");
-        }
-        Payment payment = payments.get(paymentId);
-        return payment;
     }
 
-    public ConcurrentHashMap<UUID, Payment> getAllPayments() {
-        return (ConcurrentHashMap<UUID, Payment>) payments;
+    public List<PaymentResponse> getAllPaymentsByUser(final String authHeader) {
+        String token = checkTokenValidity(authHeader);
+        String userId = jwtService.extractUserId(token);
+        List<Payment> payments = paymentRepository.getPaymentByUserUserId(UUID.fromString(userId));
+        return payments.stream()
+                .map(payment -> new PaymentResponse(
+                        UUID.fromString(userId),
+                        payment.getAmount(),
+                        payment.getCurrency(),
+                        payment.getPaymentMethod(),
+                        payment.getPaymentId(),
+                        payment.getStatus()
+                )).toList();
     }
 
-    public PaymentResponse validateKey(final String idempotencyKey, PaymentRequest request, UUID userId) {
-        if (processedRequests.containsKey(idempotencyKey)) {
-//            return idempotencyKeys.get(idempotencyKey);
-            return checkPaymentConfigurations(request, idempotencyKey, String.valueOf(userId));
+    public PaymentResponse validateKeyAgainstUserId(final String idempotencyKey, PaymentRequest request, UUID userId) throws NullPointerException {
+        Payment existingPayment = paymentRepository.getPaymentByUserUserIdAndIdempotencyKey(userId, idempotencyKey);
+        User user = userRepository.findByUserId(userId);
+        if (existingPayment == null) {
+            return initiatePayment(request, idempotencyKey, user);
+        } else if (Objects.equals(idempotencyKey, existingPayment.getIdempotencyKey())) {
+            return checkPaymentConfigurations(request, existingPayment, user);
+        } else {
+            return initiatePayment(request, idempotencyKey, user);
         }
-        processedRequests.put(idempotencyKey, request);
-        return initiatePayment(request, idempotencyKey, userId);
     }
 
     public String getUserIdFromToken(final String authHeader) {
         String token = checkTokenValidity(authHeader);
         String userId = jwtService.extractUserId(token);
         User user = userRepository.findByUserId(UUID.fromString(userId));
-        if (!SUCCESS.equals(user.getLogonStatus())) {
+        if (!SUCCESS.equals(user.getLogonStatus().name())) {
             throw new RuntimeException("User is not logged in");
         }
         return userId;
@@ -108,11 +113,17 @@ public class PaymentService {
         }
     }
 
-    private PaymentResponse checkPaymentConfigurations(PaymentRequest request, String idempotency, String username) {
-        PaymentRequest paymentRequest = processedRequests.get(idempotency);
-        if (!(Objects.equals(paymentRequest.getAmount(), request.getAmount())) || !(Objects.equals(paymentRequest.getPaymentMethod(), request.getPaymentMethod())) || !(Objects.equals(paymentRequest.getCurrency(), request.getCurrency()))) {
-            return null;
+    private PaymentResponse checkPaymentConfigurations(PaymentRequest request, Payment payment, User user) {
+        if (Objects.equals(request.getAmount(), payment.getAmount()) || Objects.equals(request.getPaymentMethod(), payment.getPaymentMethod()) || Objects.equals(request.getCurrency(), payment.getCurrency())) {
+            return new PaymentResponse(
+                    user.getUserId(),
+                    payment.getAmount(),
+                    payment.getCurrency(),
+                    payment.getPaymentMethod(),
+                    payment.getPaymentId(),
+                    payment.getStatus());
+        } else {
+            return initiatePayment(request, payment.getIdempotencyKey(), user);
         }
-        return paymentResponseMap.get(idempotency);
     }
 }

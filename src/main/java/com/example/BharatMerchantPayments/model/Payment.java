@@ -18,12 +18,14 @@ import java.util.*;
 @Table(name = "Payments")
 public class Payment {
 
-    private String userId;
+    @Id
     private UUID paymentId;
     private Double amount;
     private String currency;
     private String paymentMethod;
+    @Enumerated(EnumType.STRING)
     private PaymentStatus status;
+    private String idempotencyKey;
     @ManyToOne
     @JoinColumn(name = "user_id")
     private User user;

@@ -11,6 +11,10 @@ import java.util.UUID;
 @Setter
 @AllArgsConstructor
 public class PaymentResponse {
+    private UUID userId;
+    private Double amount;
+    private String currency;
+    private String paymentMethod;
     private UUID paymentId;
     private PaymentStatus status;
 }

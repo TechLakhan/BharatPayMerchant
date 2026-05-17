@@ -2,6 +2,7 @@ package com.example.BharatMerchantPayments.model;
 
 import com.example.BharatMerchantPayments.enums.UserCreationStatus;
 import com.example.BharatMerchantPayments.enums.UserLoginStatus;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -33,6 +34,7 @@ public class User {
     @Column(length = 1000)
     private String activeSession;
 
-    @OneToMany(mappedBy = "Users")
+    @JsonIgnore
+    @OneToMany(mappedBy = "user")
     private List<Payment> payments;
 }
