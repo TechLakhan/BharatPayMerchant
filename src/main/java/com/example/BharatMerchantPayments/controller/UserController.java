@@ -4,10 +4,16 @@ import com.example.BharatMerchantPayments.dto.LoginRequest;
 import com.example.BharatMerchantPayments.dto.LoginResponse;
 import com.example.BharatMerchantPayments.dto.UserRequest;
 import com.example.BharatMerchantPayments.dto.UserResponse;
+import com.example.BharatMerchantPayments.enums.UserCreationStatus;
+import com.example.BharatMerchantPayments.exception.DataAccessException;
 import com.example.BharatMerchantPayments.service.UserService;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.Map;
 
 @RestController
 @RequestMapping(value = "/user")
@@ -47,5 +53,10 @@ public class UserController {
         } catch (Exception e) {
             throw new RuntimeException("Failure in user logoff API");
         }
+    }
+
+    @GetMapping
+    public ResponseEntity<Map<String, UserCreationStatus>> allUsers() {
+        return ResponseEntity.ok(userService.getAllUser());
     }
 }

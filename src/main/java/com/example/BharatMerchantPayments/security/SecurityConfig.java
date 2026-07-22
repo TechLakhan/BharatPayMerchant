@@ -15,10 +15,11 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) {
-        http.csrf(
-                        AbstractHttpConfigurer::disable)
+        http.csrf( AbstractHttpConfigurer::disable )
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/user/auth/**", "/payments/**").permitAll()
+                        .requestMatchers("/user").permitAll()
+                        .requestMatchers("/payments/webhook/**").permitAll()   // ONLY the webhook callback
+                        .requestMatchers("/user/auth/**, /payments/**").authenticated()        // everything else needs auth
                         .anyRequest().authenticated()
                 );
 

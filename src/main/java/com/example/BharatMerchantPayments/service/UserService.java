@@ -7,10 +7,14 @@ import com.example.BharatMerchantPayments.dto.UserResponse;
 import com.example.BharatMerchantPayments.enums.UserCreationStatus;
 import com.example.BharatMerchantPayments.model.User;
 import com.example.BharatMerchantPayments.repository.UserRepository;
+import org.springframework.boot.webmvc.autoconfigure.WebMvcProperties;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -81,5 +85,14 @@ public class UserService {
         user.setActiveSession(null);
         userRepository.save(user);
         return "User Logged out successfully.";
+    }
+
+    public Map<String, UserCreationStatus> getAllUser() {
+        List<User> allUsers = userRepository.findAll();
+        Map<String, UserCreationStatus> allUserMap = new HashMap<>();
+        for (User user : allUsers) {
+            allUserMap.put(user.getUsername(), user.getStatus());
+        }
+        return allUserMap;
     }
 }
