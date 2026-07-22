@@ -7,11 +7,12 @@ import com.example.BharatMerchantPayments.model.Payment;
 import com.example.BharatMerchantPayments.model.User;
 import com.example.BharatMerchantPayments.repository.PaymentRepository;
 import com.example.BharatMerchantPayments.repository.UserRepository;
-import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
 
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.List;
+import java.util.Objects;
+import java.util.Set;
+import java.util.UUID;
 
 @Service
 public class PaymentService {
@@ -37,7 +38,7 @@ public class PaymentService {
         payment.setAmount(request.getAmount());
         payment.setCurrency(request.getCurrency());
         payment.setPaymentMethod(request.getPaymentMethod());
-        payment.setStatus(PaymentStatus.SUCCESS);
+        payment.setStatus(PaymentStatus.PENDING);
         payment.setIdempotencyKey(idempotencyKey);
         payment.setUser(user);
         paymentRepository.save(payment);
@@ -81,13 +82,11 @@ public class PaymentService {
     }
 
     public PaymentResponse validateKeyAgainstUserId(final String idempotencyKey, PaymentRequest request, UUID userId) throws NullPointerException {
-        Payment existingPayment = paymentRepository.getPaymentByUserUserIdAndIdempotencyKey(userId, idempotencyKey);
+        Payment existingPayments = paymentRepository.getPaymentByUserUserIdAndIdempotencyKey(userId, idempotencyKey);
         User user = userRepository.findByUserId(userId);
-        if (existingPayment == null) {
-            return initiatePayment(request, idempotencyKey, user);
-        } else if (Objects.equals(idempotencyKey, existingPayment.getIdempotencyKey())) {
-            return checkPaymentConfigurations(request, existingPayment, user);
-        } else {
+        if (existingPayments != null && existingPayments.get()) {
+            return checkPaymentConfigurations(request, , user);
+        }  else {
             return initiatePayment(request, idempotencyKey, user);
         }
     }
@@ -114,16 +113,10 @@ public class PaymentService {
     }
 
     private PaymentResponse checkPaymentConfigurations(PaymentRequest request, Payment payment, User user) {
-        if (Objects.equals(request.getAmount(), payment.getAmount()) || Objects.equals(request.getPaymentMethod(), payment.getPaymentMethod()) || Objects.equals(request.getCurrency(), payment.getCurrency())) {
-            return new PaymentResponse(
-                    user.getUserId(),
-                    payment.getAmount(),
-                    payment.getCurrency(),
-                    payment.getPaymentMethod(),
-                    payment.getPaymentId(),
-                    payment.getStatus());
-        } else {
-            return initiatePayment(request, payment.getIdempotencyKey(), user);
-        }
+         payment.stream()
+                 .filter(payment1 -> new PaymentResponse(
+                         user.getUserId(),
+
+                 ))
     }
 }
