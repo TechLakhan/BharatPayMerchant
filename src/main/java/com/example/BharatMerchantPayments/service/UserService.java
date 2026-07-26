@@ -4,7 +4,9 @@ import com.example.BharatMerchantPayments.dto.LoginRequest;
 import com.example.BharatMerchantPayments.dto.LoginResponse;
 import com.example.BharatMerchantPayments.dto.UserRequest;
 import com.example.BharatMerchantPayments.dto.UserResponse;
+import com.example.BharatMerchantPayments.enums.ErrorCodes;
 import com.example.BharatMerchantPayments.enums.UserCreationStatus;
+import com.example.BharatMerchantPayments.exception.DataAccessException;
 import com.example.BharatMerchantPayments.model.User;
 import com.example.BharatMerchantPayments.repository.UserRepository;
 import org.springframework.boot.webmvc.autoconfigure.WebMvcProperties;
@@ -36,7 +38,7 @@ public class UserService {
         this.userRepository = userRepository;
     }
 
-    public UserResponse createUser(UserRequest request) {
+    public UserResponse createUser(UserRequest request) throws DataAccessException {
         boolean userExists = userRepository.existsByUsername(request.getUsername());
         if (!userExists) {
             User newUser = new User();
@@ -51,7 +53,7 @@ public class UserService {
             return new UserResponse(newUser.getUsername(), newUser.getStatus());
         }
         else {
-            throw new RuntimeException("User not found");
+            throw new DataAccessException(500, ErrorCodes.EXP001.message(), "User already exists");
         }
     }
 

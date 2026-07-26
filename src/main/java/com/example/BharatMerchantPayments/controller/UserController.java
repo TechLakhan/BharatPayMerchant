@@ -4,11 +4,10 @@ import com.example.BharatMerchantPayments.dto.LoginRequest;
 import com.example.BharatMerchantPayments.dto.LoginResponse;
 import com.example.BharatMerchantPayments.dto.UserRequest;
 import com.example.BharatMerchantPayments.dto.UserResponse;
+import com.example.BharatMerchantPayments.enums.ErrorCodes;
 import com.example.BharatMerchantPayments.enums.UserCreationStatus;
 import com.example.BharatMerchantPayments.exception.DataAccessException;
 import com.example.BharatMerchantPayments.service.UserService;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -25,14 +24,9 @@ public class UserController {
         this.userService = userService;
     }
 
-    @PostMapping(value = "/auth/reg")
-    public UserResponse registerUser(@RequestBody final UserRequest request) {
-        try {
-            return userService.createUser(request);
-        }
-        catch (RuntimeException e) {
-            throw new RuntimeException(HttpStatus.BAD_REQUEST.getReasonPhrase());
-        }
+    @PostMapping(value = "/register")
+    public UserResponse registerUser(@RequestBody final UserRequest request) throws DataAccessException {
+        return userService.createUser(request);
     }
 
 
@@ -56,7 +50,7 @@ public class UserController {
     }
 
     @GetMapping
-    public ResponseEntity<Map<String, UserCreationStatus>> allUsers() {
+    public ResponseEntity<Map<String, UserCreationStatus>> allUsers() throws DataAccessException {
         return ResponseEntity.ok(userService.getAllUser());
     }
 }
