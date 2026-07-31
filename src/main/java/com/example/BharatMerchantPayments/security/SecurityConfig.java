@@ -19,8 +19,9 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/user").permitAll()
                         .requestMatchers("/user/register/**").permitAll()
+                        .requestMatchers("/user/auth/login/**").permitAll()
                         .requestMatchers("/payments/webhook/**").permitAll()   // ONLY the webhook callback
-                        .requestMatchers("/user/auth/login, /payments/**").authenticated()        // everything else needs auth
+                        .requestMatchers("/payments/**").authenticated()        // everything else needs auth
                         .anyRequest().authenticated()
                 );
 
