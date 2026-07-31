@@ -17,4 +17,13 @@ public class PaymentResponse {
     private String paymentMethod;
     private UUID paymentId;
     private PaymentStatus status;
+
+    public PaymentResponse(UUID userId, Double amount, String currency, String paymentMethod, UUID paymentId, PaymentStatus status) {
+        this.userId = userId;
+        this.amount = amount;
+        this.currency = currency;
+        this.paymentMethod = paymentMethod;
+        this.paymentId = paymentId;
+        this.status = status;
+    }
 }
